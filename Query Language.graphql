@@ -1,0 +1,228 @@
+# Custom Scalar Type
+scalar DateTime
+
+# Enums
+enum PhotoCategory {
+  SELFIE
+  PORTRAIT
+  ACTION
+  LANDSCAPE
+  GRAPHIC
+}
+
+# Custom Type
+type Photo {
+  id: ID!
+  name: String!
+  url: String!
+  description: String
+  created: DateTime!
+  category: PhotoCategory!
+}
+
+# -----------------------
+# One-to-one relationship
+# -----------------------
+
+type User {
+  githubLogin: ID!
+  name: String
+  avatar: String
+}
+
+type Photo {
+  id: ID!
+  name: String!
+  url: String!
+  description: String
+  created: DateTime!
+  category: PhotoCategory!
+  postedBy: User!
+}
+
+# ------------------------
+# One-to-many relationship
+# ------------------------
+
+# Now we can also access photos from user
+# Not only by postedBy property on photo
+type User {
+  githubLogin: ID!
+  name: String
+  avatar: String
+  postedPhotos: [Photo!]!
+}
+
+# ------------------------
+# Defining root query type
+# ------------------------
+
+# Could obtain amount of photos or users by total property
+# allPhotos and allUsers are arrays which store data of these types
+type Query {
+  totalPhotos: Int!
+  allPhotos: [Photo!]!
+  totalUsers: Int!
+  allUsers: [User!]!
+}
+
+schema {
+  query: Query
+}
+
+# -------------
+# Example query
+# -------------
+
+# Now we can use this to fetch data
+query {
+  totalPhotos
+  allPhotos {
+    name
+    url
+  }
+}
+
+# -------------------------
+# Many-to-many relationship
+# -------------------------
+
+# Our application will allow users to identify other users in each photo that
+# they post. This process is called tagging. A photo can consist of many users, and
+# a user can be tagged in many photos
+type User {
+  ...
+  inPhotos: [Photo!]!
+}
+
+type Photo {
+  ...
+  taggedUsers: [User!]!
+}
+
+# -------------
+# Through types
+# -------------
+
+# Friendships between users could describe this way
+type User {
+  friends: [User!]!
+}
+
+# Here, we’ve defined a list of friends for each user. Consider a case in which we
+# wanted to save some information about the friendship itself, like how long users
+# have known one another or where they met.
+
+# In this situation, we need to define the edge as a custom object type. We call this
+# object a through type because it is a node that is designed to connect two nodes.
+# Let’s define a through type called Friendship that we can use to connect two
+# friends but also deliver data on how the friends are connected
+
+type User {
+  friends: [Friendship!]!
+}
+
+type Friendship {
+  friend_a: User!
+  friend_b: User!
+  howLong: Int!
+  whereWeMet: Location
+}
+
+# We can improve upon the design of the Friendship type by allowing for a group
+# of friends to be a part of the friendship. For example, maybe you met your best
+# friends at the same time in first grade. We can allow for two or more friends to
+# be a part of the friendship by adding a single field called friends
+
+type Friendship {
+  friends: [User!]!
+  howLong: Int!
+  whereWeMet: Location
+}
+
+# ------------------------
+# Lists of different types
+# ------------------------
+
+# Union Types
+# ===========
+
+# Example schedule
+query schedule {
+  agenda {
+    ...on Workout {
+      name
+      reps
+    }
+    ...on StudyGroup {
+      name
+      subject
+      students
+    }
+  }
+}
+
+# We could handle this by creating a union type AgendaItem
+union AgendaItem = StudyGroup | Workout
+
+type StudyGroup {
+  name: String!
+  subject: String
+  students: [User!]!
+}
+
+type Workout {
+  name: String!
+  reps: Int!
+}
+
+type Query {
+  agenda: [AgendaItem!]!
+}
+
+# It is possible to join as many types as we want under a single union. Simply
+# separate each type with a pipe
+union = StudyGroup | Workout | Class | Meal | Meeting | FreeTime
+
+# Interfaces
+# ==========
+
+query schedule {
+  agenda {
+    name
+    start
+    end
+    ...on Workout {
+      reps
+    }
+  }
+}
+
+
+# Here is how we would implement this solution in our GraphQL schema:
+scalar DataTime
+
+interface AgendaItem {
+  name: String!
+  start: DateTime!
+  end: DateTime!
+}
+
+type StudyGroup implements AgendaItem {
+  name: String!
+  start: DateTime!
+  end: DateTime!
+  participants: [User!]!
+  topic: String!
+}
+
+type Workout implements AgendaItem {
+  name: String!
+  start: DateTime!
+  end: DateTime!
+  reps: Int!
+}
+
+type Query {
+  agenda: [AgendaItem!]!
+}
