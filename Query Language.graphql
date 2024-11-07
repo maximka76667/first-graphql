@@ -226,3 +226,271 @@ type Workout implements AgendaItem {
 type Query {
   agenda: [AgendaItem!]!
 }
+
+# ---------
+# Arguments
+# ---------
+
+type Query {
+  ...
+  User(githubLogin: ID!): User!
+  Photo(id: ID!): Photo!
+}
+
+# Usage
+
+# For user
+query {
+  User(githubLogin: "maximka76667") {
+    name
+    avatar
+  }
+}
+
+# For photo
+query {
+  Photo(id: "5") {
+    name
+    description
+    url
+  }
+}
+
+# Filtering Data
+# ==============
+
+# Here category is optional argument of PhotoCategory type
+type Query {
+  ...
+  allPhotos(category: PhotoCategory): [Photo!]!
+}
+
+query {
+  allPhotos(category: "SELFIE") {
+    name
+    description
+    url
+  }
+}
+
+# Data paging
+# ===========
+
+# We can use GraphQL arguments to control the amount of data
+# that is returned from our queries. This process is called data paging because a
+# specific number of records are returned to represent one page of data.
+
+type Query {
+  ...
+  allUsers(first: Int=50 start: Int=0): [User!]!
+  allPhotos(first: Int=25 start: Int=0)
+}
+
+# In the preceding example, we have added optional arguments for first and start.
+# If the client does not supply these arguments with the query, we will use the
+# default values provided. By default, the allUsers query returns only the first 50
+# users, and the allPhotos query returns only the first 25 photos.
+
+# 90 through 100 users
+query {
+  allUsers(first: 10 start: 90) {
+    name
+    avatar
+  }
+}
+
+# Sorting
+# =======
+
+enum SortDirection {
+  ASCENDING
+  DESCENDING
+}
+
+enum SortablePhotoField {
+  name
+  description
+  category
+  created
+}
+
+Query {
+  allPhotos(
+    sort: SortDirection = DESCENDING
+    sortBy: SortablePhotoField = created
+  ): [Photo!]!
+}
+
+# Both arguments are optional and defaulted to DESCENDING order by created field of Photo type
+
+query {
+  allPhotos(sortBy: name)
+}
+
+# This query will return all photos sorted by name in a descending order
+
+# So far, we’ve added arguments only to fields of the Query type, but it is
+# important to note that you can add arguments to any field. We could add the
+# filtering, sorting, and paging arguments to the photos that have been posted by a
+# single user:
+type User {
+  postedPhotos(
+    first: Int = 25
+    start: Int = 0
+    sort: SortDirection = DESCENDING
+    sortBy: SortablePhotoField = created
+    category: PhotoCategory
+  ): [Photo!]
+}
+
+# ---------
+# Mutations
+# ---------
+
+type Mutation {
+  postPhoto(
+    name: String!
+    description: String
+    category: PhotoCategory = PORTRAIT
+  ): Photo!
+}
+
+schema {
+  query: Query
+  mutation: Mutation
+}
+
+# When a user posts a photo, at a bare minimum the photo’s name is required. The
+# description and category are optional. If a category argument is not supplied, the
+# posted photo will be defaulted to PORTRAIT. For example, a user can post a
+# photo by sending the following mutation:
+
+mutation {
+  postPhoto(name: "Valencia Trip") {
+    id
+    url
+    created
+    postedBy {
+      name
+    }
+  }
+}
+
+# Mutation variable on client
+# ===========================
+
+mutation postPhoto(
+  $name: String!
+  $description: String
+  $category: PhotoCategory
+) {
+  postPhoto(
+    name: $name
+    description: $description
+    category: $category
+  ) {
+    id
+    name
+    email
+  }
+}
+
+# -----------
+# Input types
+# -----------
+
+# There is a better way to organize lengthy
+# arguments using input types.
+
+input PostPhotoInput {
+  name: String!
+  description: String
+  category: PhotoCategory = PORTRAIT
+}
+
+type Mutation {
+  postPhoto(input: PostPhotoInput): Photo!
+}
+
+mutation newPhotos($input: PostPhotoInput!) {
+  postPhoto(input: $input) {
+    id
+    url
+    created
+  }
+}
+
+# Input types are key to organizing and writing a clear GraphQL schema. You can
+# use input types as arguments on any field. You can use them to improve both
+# data paging and data filtering in applications.
+
+input PhotoFilter {
+  category: PhotoCategory
+  createdBetween: DateRange
+  taggedUsers: [ID!]
+  searchText: String
+}
+
+input DateRange {
+  start: DateTime!
+  end: DateTime!
+}
+
+input DataPage {
+  first: Int = 25
+  start: Int = 0
+}
+
+input DataSort {
+  sort: SortDirection = DESCENDING
+  sortBy: SortablePhotoField = created
+}
+
+type User {
+  ...
+  postedPhotos(filter:PhotoFilter paging:DataPage sorting:DataSort): [Photo!]!
+  inPhotos(filter:PhotoFilter paging:DataPage sorting:DataSort): [Photo!]!
+}
+
+type Photo {
+  ...
+  taggedUsers(sorting:DataSort): [User!]!
+}
+
+type Query {
+  ...
+  allUsers(paging:DataPage sorting:DataSort): [User!]!
+  allPhotos(filter:PhotoFilter paging:DataPage sorting:DataSort): [Photo!]!
+}
+
+# Input types have also been created for paging and sorting. The DataPage input
+# type contains the fields needed to request a page of data and the DataSort input
+# type contains our sorting fields. These input types have been added to every field
+# in our schema that returns a list of data.
+
+query getPhotos($filter:PhotoFilter $page:DataPage $sort:DataSort) {
+  allPhotos(filter:$filter paging:$page sorting:$sort) {
+    id
+    name
+    url
+  }
+}
+
+{
+  "filter": {
+    "category": "ACTION",
+    "taggedUsers": ["MoonTahoe", "EvePorcello"],
+    "createdBetween": {
+      "start": "2018-11-6",
+      "end": "2018-5-31"
+    }
+  },
+  "page": {
+    "first": 100
+  }
+}
+
+# This query will find all of the ACTION photos for which GitHub users
+# MoonTahoe and EvePorcello are tagged between November 6th and May 31st,
+# which happens to be ski season. We also ask for the first 100 photos with this
+# query.
