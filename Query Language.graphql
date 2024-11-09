@@ -494,3 +494,24 @@ query getPhotos($filter:PhotoFilter $page:DataPage $sort:DataSort) {
 # MoonTahoe and EvePorcello are tagged between November 6th and May 31st,
 # which happens to be ski season. We also ask for the first 100 photos with this
 # query.
+
+# -------------
+# Subscriptions
+# -------------
+
+type Subscription {
+  newPhoto: Photo!
+  newUser: User!
+}
+
+schema {
+  query: Query
+  mutation: Mutation
+  subscription: Subscription
+}
+
+# With arguments
+type Subscription {
+  newPhoto(category: PhotoCategory): Photo!
+  newUser: User!
+}
